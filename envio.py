@@ -89,86 +89,171 @@ def crear_cuerpo_email(analisis, fecha_reporte):
     <html>
       <head>
         <style>
-          body {{ font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #333; }}
-          .container {{ max-width: 800px; margin: 0 auto; padding: 20px; }}
-          .header {{ background-color: #2A5C8F; padding: 20px; color: white; text-align: center; }}
+          /* Estilos Base Mejorados */
+          body {{ 
+              font-family: 'Segoe UI', system-ui, sans-serif; 
+              color: #2d3436; 
+              line-height: 1.6;
+          }}
+          .container {{ 
+              max-width: 1000px; 
+              margin: 0 auto; 
+              padding: 25px;
+              background: #f8f9fa;
+          }}
+          
+          /* Header Profesional */
+          .header {{ 
+              background: linear-gradient(135deg, #2A5C8F 0%, #1a365f 100%);
+              padding: 30px 40px;
+              color: white;
+              border-radius: 12px 12px 0 0;
+              margin-bottom: 25px;
+              box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+          }}
+          .header h1 {{
+              font-size: 28px;
+              margin: 0;
+              letter-spacing: 0.5px;
+              font-weight: 600;
+          }}
+          .header h3 {{
+              font-size: 18px;
+              opacity: 0.9;
+              font-weight: 400;
+              margin: 8px 0 0 0;
+          }}
+          
+          /* Tarjetas de Métricas Mejoradas */
+          .metric-grid {{
+              display: grid;
+              grid-template-columns: repeat(2, 1fr);
+              gap: 20px;
+              margin: 25px 0;
+          }}
           .metric-card {{ 
-              background: white; 
-              border-radius: 10px; 
-              padding: 20px; 
-              margin: 10px; 
-              box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-              display: inline-block;
-              width: 45%;
+              background: white;
+              border-radius: 12px;
+              padding: 25px;
+              box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+              border: 1px solid #e9ecef;
+              transition: transform 0.2s;
+          }}
+          .metric-card:hover {{
+              transform: translateY(-3px);
+          }}
+          .metric-card div:first-child {{
+              font-size: 16px;
+              color: #6c757d;
+              margin-bottom: 12px;
+              display: flex;
+              align-items: center;
+              gap: 8px;
           }}
           .metric-value {{ 
-              font-size: 24px; 
-              color: #2A5C8F; 
-              font-weight: bold;
-              margin: 10px 0;
+              font-size: 28px;
+              color: #2A5C8F;
+              font-weight: 700;
+              letter-spacing: -0.5px;
           }}
-          .chart {{ 
-              margin: 20px 0; 
-              border-radius: 10px;
-              overflow: hidden;
+          
+          /* Sección de Gráficos Profesional */
+          .chart-section {{
+              background: white;
+              padding: 25px;
+              border-radius: 12px;
+              margin: 25px 0;
+              box-shadow: 0 3px 10px rgba(0,0,0,0.05);
           }}
+          .chart-title {{
+              font-size: 20px;
+              color: #2d3436;
+              margin-bottom: 20px;
+              border-left: 4px solid #2A5C8F;
+              padding-left: 15px;
+          }}
+          
+          /* Footer Mejorado */
           .footer {{ 
-              background-color: #f5f5f5; 
-              padding: 15px; 
-              text-align: center; 
-              font-size: 12px;
-              margin-top: 20px;
+              background: #2A5C8F;
+              color: rgba(255,255,255,0.9);
+              padding: 20px;
+              text-align: center;
+              border-radius: 0 0 12px 12px;
+              margin-top: 30px;
+              font-size: 13px;
+          }}
+          .footer p {{
+              margin: 5px 0;
+          }}
+          
+          /* Mejoras en Listados */
+          .hallazgos {{
+              background: white;
+              padding: 25px;
+              border-radius: 12px;
+              box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+          }}
+          .hallazgos li {{
+              margin-bottom: 10px;
+              padding: 10px;
+              background: #f8f9fa;
+              border-radius: 6px;
           }}
         </style>
       </head>
       <body>
         <div class="container">
           <div class="header">
-            <h1>Reporte Diario de Ventas</h1>
+            <h1>📈 Reporte Diario de Ventas</h1>
             <h3>{fecha_reporte}</h3>
           </div>
           
-          <div style="text-align: center; margin: 20px 0;">
+          <div class="metric-grid">
             <div class="metric-card">
-              <div>Total Ventas</div>
+              <div>💰 Total Ventas</div>
               <div class="metric-value">S/. {analisis['total_ventas']:,.2f}</div>
             </div>
             <div class="metric-card">
-              <div>Unidades Vendidas</div>
+              <div>📦 Unidades Vendidas</div>
               <div class="metric-value">{analisis['total_unidades']}</div>
             </div>
           </div>
           
-          <h2>Análisis Visual</h2>
-          <div class="chart">
-            <img src="cid:ventas_horarias.png" style="width: 100%;">
+          <div class="chart-section">
+            <div class="chart-title">Análisis Visual</div>
+            <div class="chart">
+              <img src="cid:ventas_horarias.png" style="width:100%; border-radius:8px;">
+            </div>
+            
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:25px; margin-top:25px;">
+              <div>
+                <img src="cid:metodos_pago.png" style="width:100%; border-radius:8px;">
+              </div>
+              <div>
+                <img src="cid:top_productos.png" style="width:100%; border-radius:8px;">
+              </div>
+            </div>
           </div>
           
-          <div style="display: flex; gap: 20px; margin: 20px 0;">
-            <div style="flex: 1;">
-              <img src="cid:metodos_pago.png" style="width: 100%;">
-            </div>
-            <div style="flex: 1;">
-              <img src="cid:top_productos.png" style="width: 100%;">
-            </div>
+          <div class="hallazgos">
+            <h2 style="margin-top:0;">🔍 Hallazgos Clave</h2>
+            <ul>
+              <li>Método de pago predominante: <strong>{analisis['modo_venta_comun']}</strong></li>
+              <li>Sede destacada: <strong>{analisis['sede_mas_ventas']}</strong></li>
+              <li>Producto líder: <strong>{analisis['top_producto']}</strong></li>
+            </ul>
           </div>
-          
-          <h2>Hallazgos Clave</h2>
-          <ul style="background: #f9f9f9; padding: 20px; border-radius: 10px;">
-            <li>El método de pago más utilizado fue: {analisis['modo_venta_comun']}</li>
-            <li>La sede con mayor performance: {analisis['sede_mas_ventas']}</li>
-            <li>Producto estrella: {analisis['top_producto']}</li>
-          </ul>
           
           <div class="footer">
-            <p>Este reporte fue generado automáticamente - {fecha_reporte}</p>
-            <p>© 2024 Tu Empresa - Todos los derechos reservados</p>
+            <p>🔒 Reporte generado automáticamente - {fecha_reporte}</p>
+            <p>© 2024 Retail Analytics | Todos los derechos reservados</p>
           </div>
         </div>
       </body>
     </html>
     """
-
+    
 def obtener_datos_ventas():
     try:
         # Conexión a la base de datos
