@@ -37,7 +37,7 @@ SENDER_EMAIL = os.environ.get('EMAIL_USER')
 SENDER_PASSWORD = os.environ.get('EMAIL_PASSWORD')
 
 # **Direcciones de Correo Destinatarias**
-RECEIVER_EMAILS = ["gfxjef@gmail.com", "max.campor@gmail.com", "milazcyn@gmail.com", "camachoteofilo1958@gmail.com"]
+RECEIVER_EMAILS = ["gfxjef@gmail.com", "gfxjef@gmail.com", "gfxjef@gmail.com", "gfxjef@gmail.com"]
 
 def generar_graficos(df, fecha_reporte):
     try:
@@ -253,7 +253,7 @@ def crear_cuerpo_email(analisis, fecha_reporte):
       </body>
     </html>
     """
-    
+
 def obtener_datos_ventas():
     try:
         # Conexión a la base de datos
