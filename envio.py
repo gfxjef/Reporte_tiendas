@@ -46,7 +46,7 @@ def generar_graficos(df, fecha_reporte):
         
         # Gráfico 1: Evolución horaria de ventas
         plt.figure(figsize=(10, 6))
-        df['Hora'] = df['Timestamp Descendente 1'].dt.hour
+        df['Hora'] = df['Timestamp'].dt.hour
         ventas_horarias = df.groupby('Hora')['Precio'].sum()
         sns.lineplot(x=ventas_horarias.index, y=ventas_horarias.values, 
                     marker='o', color=colores[0], linewidth=2.5)
@@ -175,9 +175,9 @@ def obtener_datos_ventas():
         conn = mysql.connector.connect(**DB_CONFIG)
         query = f"""
             SELECT * FROM ventas_totales_2024 
-            WHERE DATE(`Timestamp Descendente 1`) = CURDATE() - INTERVAL 1 DAY
+            WHERE DATE(`Timestamp`) = CURDATE() - INTERVAL 1 DAY
         """
-        df = pd.read_sql(query, conn, parse_dates=['Timestamp Descendente 1'])
+        df = pd.read_sql(query, conn, parse_dates=['Timestamp'])
         conn.close()
         logger.info("Datos de ventas obtenidos correctamente.")
         return df
