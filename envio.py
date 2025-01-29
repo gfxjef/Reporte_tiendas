@@ -86,171 +86,113 @@ def generar_graficos(df, fecha_reporte):
 
 def crear_cuerpo_email(analisis, fecha_reporte):
     return f"""
-    <html>
-      <head>
-        <style>
-          /* Estilos Base Mejorados */
-          body {{ 
-              font-family: 'Segoe UI', system-ui, sans-serif; 
-              color: #2d3436; 
-              line-height: 1.6;
-          }}
-          .container {{ 
-              max-width: 1000px; 
-              margin: 0 auto; 
-              padding: 25px;
-              background: #f8f9fa;
-          }}
-          
-          /* Header Profesional */
-          .header {{ 
-              background: linear-gradient(135deg, #2A5C8F 0%, #1a365f 100%);
-              padding: 30px 40px;
-              color: white;
-              border-radius: 12px 12px 0 0;
-              margin-bottom: 25px;
-              box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-          }}
-          .header h1 {{
-              font-size: 28px;
-              margin: 0;
-              letter-spacing: 0.5px;
-              font-weight: 600;
-          }}
-          .header h3 {{
-              font-size: 18px;
-              opacity: 0.9;
-              font-weight: 400;
-              margin: 8px 0 0 0;
-          }}
-          
-          /* Tarjetas de Métricas Mejoradas */
-          .metric-grid {{
-              display: grid;
-              grid-template-columns: repeat(2, 1fr);
-              gap: 20px;
-              margin: 25px 0;
-          }}
-          .metric-card {{ 
-              background: white;
-              border-radius: 12px;
-              padding: 25px;
-              box-shadow: 0 3px 10px rgba(0,0,0,0.05);
-              border: 1px solid #e9ecef;
-              transition: transform 0.2s;
-          }}
-          .metric-card:hover {{
-              transform: translateY(-3px);
-          }}
-          .metric-card div:first-child {{
-              font-size: 16px;
-              color: #6c757d;
-              margin-bottom: 12px;
-              display: flex;
-              align-items: center;
-              gap: 8px;
-          }}
-          .metric-value {{ 
-              font-size: 28px;
-              color: #2A5C8F;
-              font-weight: 700;
-              letter-spacing: -0.5px;
-          }}
-          
-          /* Sección de Gráficos Profesional */
-          .chart-section {{
-              background: white;
-              padding: 25px;
-              border-radius: 12px;
-              margin: 25px 0;
-              box-shadow: 0 3px 10px rgba(0,0,0,0.05);
-          }}
-          .chart-title {{
-              font-size: 20px;
-              color: #2d3436;
-              margin-bottom: 20px;
-              border-left: 4px solid #2A5C8F;
-              padding-left: 15px;
-          }}
-          
-          /* Footer Mejorado */
-          .footer {{ 
-              background: #2A5C8F;
-              color: rgba(255,255,255,0.9);
-              padding: 20px;
-              text-align: center;
-              border-radius: 0 0 12px 12px;
-              margin-top: 30px;
-              font-size: 13px;
-          }}
-          .footer p {{
-              margin: 5px 0;
-          }}
-          
-          /* Mejoras en Listados */
-          .hallazgos {{
-              background: white;
-              padding: 25px;
-              border-radius: 12px;
-              box-shadow: 0 3px 10px rgba(0,0,0,0.05);
-          }}
-          .hallazgos li {{
-              margin-bottom: 10px;
-              padding: 10px;
-              background: #f8f9fa;
-              border-radius: 6px;
-          }}
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1>📈 Reporte Diario de Ventas</h1>
-            <h3>{fecha_reporte}</h3>
-          </div>
-          
-          <div class="metric-grid">
-            <div class="metric-card">
-              <div>💰 Total Ventas</div>
-              <div class="metric-value">S/. {analisis['total_ventas']:,.2f}</div>
-            </div>
-            <div class="metric-card">
-              <div>📦 Unidades Vendidas</div>
-              <div class="metric-value">{analisis['total_unidades']}</div>
-            </div>
-          </div>
-          
-          <div class="chart-section">
-            <div class="chart-title">Análisis Visual</div>
-            <div class="chart">
-              <img src="cid:ventas_horarias.png" style="width:100%; border-radius:8px;">
-            </div>
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Reporte Diario de Ventas</title>
+    </head>
+    <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #ffffff;">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width: 800px; margin: 0 auto;">
+            <!-- Header -->
+            <tr>
+                <td style="background: linear-gradient(135deg, #2A5C8F, #1a365f); padding: 30px 20px; text-align: center; border-radius: 12px 12px 0 0;">
+                    <img src="cid:logo_empresa.png" alt="Logo Empresa" style="width: 50px; height: 50px; margin-bottom: 10px;">
+                    <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 600;">📈 Reporte Diario de Ventas</h1>
+                    <p style="margin: 5px 0 0; color: #ffffff; font-size: 16px;">{fecha_reporte}</p>
+                </td>
+            </tr>
             
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:25px; margin-top:25px;">
-              <div>
-                <img src="cid:metodos_pago.png" style="width:100%; border-radius:8px;">
-              </div>
-              <div>
-                <img src="cid:top_productos.png" style="width:100%; border-radius:8px;">
-              </div>
-            </div>
-          </div>
-          
-          <div class="hallazgos">
-            <h2 style="margin-top:0;">🔍 Hallazgos Clave</h2>
-            <ul>
-              <li>Método de pago predominante: <strong>{analisis['modo_venta_comun']}</strong></li>
-              <li>Sede destacada: <strong>{analisis['sede_mas_ventas']}</strong></li>
-              <li>Producto líder: <strong>{analisis['top_producto']}</strong></li>
-            </ul>
-          </div>
-          
-          <div class="footer">
-            <p>🔒 Reporte generado automáticamente - {fecha_reporte}</p>
-            <p>© 2024 Retail Analytics | Todos los derechos reservados</p>
-          </div>
-        </div>
-      </body>
+            <!-- Métricas -->
+            <tr>
+                <td style="padding: 20px;">
+                    <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                        <tr>
+                            <td width="50%" style="padding: 10px;">
+                                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f8f9fa; border-radius: 10px; padding: 20px; box-shadow: 0 3px 6px rgba(0,0,0,0.1);">
+                                    <tr>
+                                        <td style="text-align: center;">
+                                            <img src="cid:icono_ventas.png" alt="Total Ventas" style="width: 30px; height: 30px; margin-bottom: 10px;">
+                                            <h2 style="margin: 0; color: #2A5C8F; font-size: 24px;">S/. {analisis['total_ventas']:,.2f}</h2>
+                                            <p style="margin: 5px 0 0; color: #555555; font-size: 16px;">Total Ventas</p>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </td>
+                            <td width="50%" style="padding: 10px;">
+                                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f8f9fa; border-radius: 10px; padding: 20px; box-shadow: 0 3px 6px rgba(0,0,0,0.1);">
+                                    <tr>
+                                        <td style="text-align: center;">
+                                            <img src="cid:icono_unidades.png" alt="Unidades Vendidas" style="width: 30px; height: 30px; margin-bottom: 10px;">
+                                            <h2 style="margin: 0; color: #2A5C8F; font-size: 24px;">{analisis['total_unidades']}</h2>
+                                            <p style="margin: 5px 0 0; color: #555555; font-size: 16px;">Unidades Vendidas</p>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+            
+            <!-- Sección de Gráficos -->
+            <tr>
+                <td style="padding: 20px;">
+                    <h2 style="color: #2A5C8F; font-size: 22px; margin-bottom: 15px;">Análisis Visual</h2>
+                    <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                        <tr>
+                            <td style="padding-bottom: 20px;">
+                                <img src="cid:ventas_horarias.png" alt="Ventas Horarias" style="width: 100%; border-radius: 8px; box-shadow: 0 3px 6px rgba(0,0,0,0.1);">
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding-bottom: 20px;">
+                                <img src="cid:metodos_pago.png" alt="Métodos de Pago" style="width: 100%; border-radius: 8px; box-shadow: 0 3px 6px rgba(0,0,0,0.1);">
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <img src="cid:top_productos.png" alt="Top Productos" style="width: 100%; border-radius: 8px; box-shadow: 0 3px 6px rgba(0,0,0,0.1);">
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+            
+            <!-- Hallazgos Clave -->
+            <tr>
+                <td style="padding: 20px;">
+                    <h2 style="color: #2A5C8F; font-size: 22px; margin-bottom: 15px;">🔍 Hallazgos Clave</h2>
+                    <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                        <tr>
+                            <td style="background-color: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
+                                <p style="margin: 0; color: #555555; font-size: 16px;"><strong>Método de pago predominante:</strong> {analisis['modo_venta_comun']}</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="background-color: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
+                                <p style="margin: 0; color: #555555; font-size: 16px;"><strong>Sede destacada:</strong> {analisis['sede_mas_ventas']}</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="background-color: #f8f9fa; padding: 15px; border-radius: 8px;">
+                                <p style="margin: 0; color: #555555; font-size: 16px;"><strong>Producto líder:</strong> {analisis['top_producto']}</p>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+            
+            <!-- Footer -->
+            <tr>
+                <td style="background: linear-gradient(135deg, #2A5C8F, #1a365f); padding: 20px; text-align: center; border-radius: 0 0 12px 12px; color: #ffffff;">
+                    <p style="margin: 0; font-size: 14px;">🔒 Reporte generado automáticamente - {fecha_reporte}</p>
+                    <p style="margin: 5px 0 0; font-size: 12px;">© 2024 Tu Empresa | Todos los derechos reservados</p>
+                </td>
+            </tr>
+        </table>
+    </body>
     </html>
     """
 
