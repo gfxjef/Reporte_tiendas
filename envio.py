@@ -351,56 +351,106 @@ def generate_report():
 
 def generar_graficos_semanales(df, fecha_inicio, fecha_fin):
     """
-    Genera gráficos semanales: ventas por día de la semana, comparación por sedes
-    y evolución diaria.
+    Genera gráficos semanales:
+      1. Ventas por día de la semana desglosadas por sede.
+      2. Distribución de ventas por sede en gráfico de torta.
+      3. Evolución diaria de ventas.
+      4. Ticket Promedio por Sede.
     """
     try:
-        colores = ['#2A5C8F', '#30A5BF', '#F2B705', '#F25C05']
+        # Colores a utilizar (se reutilizan o se definen nuevos si es necesario)
+        colores = ['#2A5C8F', '#30A5BF', '#F2B705', '#F25C05', '#7D3C98', '#27AE60']
+
+        # Mapeo de días de la semana de inglés a español
+        dias_ingles_a_espanol = {
+            'Monday': 'Lunes',
+            'Tuesday': 'Martes',
+            'Wednesday': 'Miércoles',
+            'Thursday': 'Jueves',
+            'Friday': 'Viernes',
+            'Saturday': 'Sábado',
+            'Sunday': 'Domingo'
+        }
+
+        ##############################
+        # 1. Ventas por día de la semana desglosadas por Sede
+        ##############################
+        # Extraer día de la semana en inglés y luego mapear a español
+        df['Dia_Ingles'] = df['Timestamp'].dt.day_name()
+        df['Dia_Espanol'] = df['Dia_Ingles'].map(dias_ingles_a_espanol)
         
-        # 1. Ventas por día de la semana
-        plt.figure(figsize=(10, 6))
-        df['Dia_Semana'] = df['Timestamp'].dt.day_name()
-        # Reordenar según la secuencia habitual
-        dias_orden = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-        ventas_diarias = df.groupby('Dia_Semana')['Precio'].sum().reindex(dias_orden)
-        ax = sns.barplot(x=ventas_diarias.index, y=ventas_diarias.values, palette=colores)
-        ax.set_title(f'Ventas por Día de la Semana\n{fecha_inicio} a {fecha_fin}', fontsize=18, weight='bold')
-        ax.set_xlabel('Día de la semana')
-        ax.set_ylabel('Total Ventas (S/.)')
-        plt.xticks(rotation=45)
+        # Pivot table: índice = día de la semana (ordenado), columnas = sede, valores = suma de ventas
+        orden_dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+        pivot_ventas = df.pivot_table(index='Dia_Espanol', columns='Sede', values='Precio', aggfunc='sum').reindex(orden_dias)
+        
+        # Gráfico de barras agrupadas
+        plt.figure(figsize=(12, 7))
+        pivot_ventas.plot(kind='bar', color=colores, edgecolor='black')
+        plt.title(f'Ventas por Día de la Semana y por Sede\n{fecha_inicio} a {fecha_fin}', fontsize=18, weight='bold')
+        plt.xlabel('Día de la Semana')
+        plt.ylabel('Total Ventas (S/.)')
+        plt.xticks(rotation=0)
+        plt.legend(title="Sede", fontsize=12)
         plt.tight_layout()
-        plt.savefig('ventas_semanales.png')
+        plt.savefig('ventas_dia_sede.png')
         plt.close()
-        logger.info("Gráfico 'ventas_semanales.png' generado correctamente.")
-        
-        # 2. Comparación de ventas por sedes
-        plt.figure(figsize=(10, 6))
-        ventas_sedes = df.groupby('Sede')['Precio'].sum().sort_values(ascending=False)
-        ax = sns.barplot(x=ventas_sedes.values, y=ventas_sedes.index, palette=colores)
-        ax.set_title('Ventas por Sede', fontsize=18, weight='bold')
-        ax.set_xlabel('Total Ventas (S/.)')
+        logger.info("Gráfico 'ventas_dia_sede.png' generado correctamente.")
+
+        ##############################
+        # 2. Distribución de ventas por Sede (Gráfico de torta)
+        ##############################
+        ventas_sedes = df.groupby('Sede')['Precio'].sum()
+        plt.figure(figsize=(8, 8))
+        # Usar los mismos colores para cada sede (en función de la cantidad de sedes)
+        colores_torta = colores[:len(ventas_sedes)]
+        patches, texts, autotexts = plt.pie(ventas_sedes, labels=ventas_sedes.index, autopct='%1.1f%%',
+                                            colors=colores_torta, startangle=90, textprops={'fontsize': 14})
+        plt.title('Distribución de Ventas por Sede', fontsize=18, weight='bold')
+        # Crear una leyenda con la correspondencia de colores
+        leyenda = [f"{sede}: {color}" for sede, color in zip(ventas_sedes.index, colores_torta)]
+        plt.legend(patches, leyenda, title="Sedes y Colores", loc="best", fontsize=12)
         plt.tight_layout()
         plt.savefig('ventas_sedes.png')
         plt.close()
         logger.info("Gráfico 'ventas_sedes.png' generado correctamente.")
-        
+
+        ##############################
         # 3. Evolución diaria de ventas
+        ##############################
         plt.figure(figsize=(12, 6))
         df['Fecha'] = df['Timestamp'].dt.date
-        ventas_diarias_line = df.groupby('Fecha')['Precio'].sum()
-        ax = sns.lineplot(x=list(ventas_diarias_line.index), y=ventas_diarias_line.values,
-                          marker='o', color=colores[0], linewidth=2.5)
-        ax.set_title('Evolución Diaria de Ventas', fontsize=18, weight='bold')
-        ax.set_xlabel('Fecha')
-        ax.set_ylabel('Total Ventas (S/.)')
+        ventas_diarias = df.groupby('Fecha')['Precio'].sum()
+        sns.lineplot(x=list(ventas_diarias.index), y=ventas_diarias.values,
+                     marker='o', color=colores[0], linewidth=2.5)
+        plt.title('Evolución Diaria de Ventas', fontsize=18, weight='bold')
+        plt.xlabel('Fecha')
+        plt.ylabel('Total Ventas (S/.)')
         plt.xticks(rotation=45)
         plt.tight_layout()
         plt.savefig('evolucion_diaria.png')
         plt.close()
         logger.info("Gráfico 'evolucion_diaria.png' generado correctamente.")
+
+        ##############################
+        # 4. Ticket Promedio por Sede
+        ##############################
+        # Calcular ticket promedio: total ventas / total unidades para cada sede
+        ticket_promedio = df.groupby('Sede').apply(lambda x: x['Precio'].sum() / x['Cantidad'].sum())
+        plt.figure(figsize=(10, 6))
+        sns.barplot(x=ticket_promedio.index, y=ticket_promedio.values, palette=colores[:len(ticket_promedio)])
+        plt.title('Ticket Promedio por Sede', fontsize=18, weight='bold')
+        plt.xlabel('Sede')
+        plt.ylabel('Ticket Promedio (S/.)')
+        plt.tight_layout()
+        plt.savefig('ticket_promedio.png')
+        plt.close()
+        logger.info("Gráfico 'ticket_promedio.png' generado correctamente.")
+
     except Exception as e:
         logger.error(f"Error al generar gráficos semanales: {str(e)}")
         raise
+
+
 
 def generar_analisis_semanal(df, df_semana_anterior=None):
     """
@@ -429,8 +479,8 @@ def generar_analisis_semanal(df, df_semana_anterior=None):
 
 def crear_cuerpo_email_semanal(analisis, fecha_inicio, fecha_fin):
     """
-    Crea el cuerpo HTML del correo semanal, incluyendo métricas principales,
-    evolución diaria y hallazgos destacados.
+    Crea el cuerpo HTML del correo semanal con métricas principales, gráficos y hallazgos.
+    Se actualiza para hacer referencia a los nuevos gráficos generados.
     """
     cuerpo = f"""
     <!DOCTYPE html>
@@ -466,20 +516,23 @@ def crear_cuerpo_email_semanal(analisis, fecha_inicio, fecha_fin):
             <div style="padding:20px;">
                 <h2 style="color:#2A5C8F; margin-bottom:15px;">Análisis Visual</h2>
                 <div style="margin-bottom:20px;">
-                    <img src="cid:ventas_semanales.png" alt="Ventas Semanales" style="width:100%; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+                    <img src="cid:ventas_dia_sede.png" alt="Ventas por Día y Sede" style="width:100%; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,0.1);">
                 </div>
                 <div style="margin-bottom:20px;">
-                    <img src="cid:ventas_sedes.png" alt="Ventas por Sede" style="width:100%; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+                    <img src="cid:ventas_sedes.png" alt="Distribución de Ventas por Sede" style="width:100%; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+                </div>
+                <div style="margin-bottom:20px;">
+                    <img src="cid:evolucion_diaria.png" alt="Evolución Diaria de Ventas" style="width:100%; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,0.1);">
                 </div>
                 <div>
-                    <img src="cid:evolucion_diaria.png" alt="Evolución Diaria" style="width:100%; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+                    <img src="cid:ticket_promedio.png" alt="Ticket Promedio por Sede" style="width:100%; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,0.1);">
                 </div>
             </div>
             <!-- Hallazgos Destacados -->
             <div style="padding:20px; background:#f8f9fa;">
                 <h2 style="color:#2A5C8F;">🔍 Hallazgos Destacados</h2>
                 <ul style="color:#555; font-size:16px;">
-                    <li><strong>Día de mayor venta:</strong> {analisis['dia_max_ventas']} (S/. {analisis['max_venta_dia']:,.2f})</li>
+                    <li><strong>Día con mayor venta:</strong> {analisis['dia_max_ventas']} (S/. {analisis['max_venta_dia']:,.2f})</li>
                     <li><strong>Sede líder:</strong> {analisis['sede_mas_ventas']} (S/. {analisis['ventas_sede_lider']:,.2f})</li>
                     <li><strong>Producto más vendido:</strong> {analisis['top_producto']} ({analisis['unidades_top_producto']} unidades)</li>
                     <li><strong>Crecimiento vs semana anterior:</strong> {analisis['crecimiento_semanal']}%</li>
@@ -496,9 +549,10 @@ def crear_cuerpo_email_semanal(analisis, fecha_inicio, fecha_fin):
     """
     return cuerpo
 
+
 def enviar_email_semanal(analisis, df, fecha_inicio, fecha_fin):
     """
-    Envía el correo semanal adjuntando gráficos y un CSV con el detalle de ventas.
+    Envía el correo semanal adjuntando los gráficos actualizados y un CSV con el detalle de ventas.
     """
     try:
         msg = MIMEMultipart()
@@ -506,22 +560,22 @@ def enviar_email_semanal(analisis, df, fecha_inicio, fecha_fin):
         msg['From'] = SENDER_EMAIL
         msg['To'] = ", ".join(RECEIVER_EMAILS)
         
-        # Generar gráficos semanales
+        # Generar los gráficos semanales actualizados
         generar_graficos_semanales(df, fecha_inicio, fecha_fin)
         
-        # Cuerpo HTML
+        # Cuerpo HTML del correo
         body = crear_cuerpo_email_semanal(analisis, fecha_inicio, fecha_fin)
         msg.attach(MIMEText(body, 'html'))
         
-        # Adjuntar imágenes de los gráficos semanales
-        imagenes = ['ventas_semanales.png', 'ventas_sedes.png', 'evolucion_diaria.png']
+        # Adjuntar las imágenes de los gráficos generados
+        imagenes = ['ventas_dia_sede.png', 'ventas_sedes.png', 'evolucion_diaria.png', 'ticket_promedio.png']
         for imagen in imagenes:
             with open(imagen, 'rb') as img:
-                image = MIMEImage(img.read(), name=imagen)
+                image = MIMEImage(img.read(), name=os.path.basename(imagen))
                 image.add_header('Content-ID', f'<{imagen}>')
                 msg.attach(image)
         
-        # Adjuntar CSV con detalle de ventas semanales
+        # Adjuntar CSV con el detalle de ventas semanales
         csv_file = df.to_csv(index=False)
         adjunto = MIMEApplication(csv_file)
         adjunto.add_header('Content-Disposition', 'attachment', 
@@ -542,6 +596,7 @@ def enviar_email_semanal(analisis, df, fecha_inicio, fecha_fin):
     except Exception as e:
         logger.error(f"Error al enviar email semanal: {str(e)}")
         raise
+
 
 def obtener_datos_semanales():
     """
