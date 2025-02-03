@@ -352,38 +352,33 @@ def generate_report():
 def generar_graficos_semanales(df, fecha_inicio, fecha_fin):
     """
     Genera gráficos semanales:
-      1. Ventas por día de la semana desglosadas por sede.
-      2. Distribución de ventas por sede en gráfico de torta.
+      1. Ventas por día de la semana desglosadas por sede (con días abreviados).
+      2. Distribución de ventas por sede en gráfico de torta (usando montos de "Precio").
       3. Evolución diaria de ventas.
-      4. Ticket Promedio por Sede.
+      4. Top 10 Productos Más Vendidos (Marca + Modelo + tamano).
     """
     try:
-        # Colores a utilizar (se reutilizan o se definen nuevos si es necesario)
+        # Definir colores a utilizar (se puede ampliar la paleta según la cantidad de sedes)
         colores = ['#2A5C8F', '#30A5BF', '#F2B705', '#F25C05', '#7D3C98', '#27AE60']
-
-        # Mapeo de días de la semana de inglés a español
-        dias_ingles_a_espanol = {
-            'Monday': 'Lunes',
-            'Tuesday': 'Martes',
-            'Wednesday': 'Miércoles',
-            'Thursday': 'Jueves',
-            'Friday': 'Viernes',
-            'Saturday': 'Sábado',
-            'Sunday': 'Domingo'
+        
+        # 1. Ventas por día de la semana desglosadas por Sede con días abreviados
+        # Diccionario para pasar de día completo en inglés a abreviatura en español
+        dias_abreviados = {
+            'Monday': 'Lun',
+            'Tuesday': 'Mar',
+            'Wednesday': 'Mier',
+            'Thursday': 'Juev',
+            'Friday': 'Vier',
+            'Saturday': 'Sab',
+            'Sunday': 'Dom'
         }
-
-        ##############################
-        # 1. Ventas por día de la semana desglosadas por Sede
-        ##############################
-        # Extraer día de la semana en inglés y luego mapear a español
         df['Dia_Ingles'] = df['Timestamp'].dt.day_name()
-        df['Dia_Espanol'] = df['Dia_Ingles'].map(dias_ingles_a_espanol)
+        df['Dia_Abreviado'] = df['Dia_Ingles'].map(dias_abreviados)
         
-        # Pivot table: índice = día de la semana (ordenado), columnas = sede, valores = suma de ventas
-        orden_dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
-        pivot_ventas = df.pivot_table(index='Dia_Espanol', columns='Sede', values='Precio', aggfunc='sum').reindex(orden_dias)
+        # Pivot table: índice = día abreviado, columnas = sede, valores = suma de "Precio"
+        orden_dias = ['Lun', 'Mar', 'Mier', 'Juev', 'Vier', 'Sab', 'Dom']
+        pivot_ventas = df.pivot_table(index='Dia_Abreviado', columns='Sede', values='Precio', aggfunc='sum').reindex(orden_dias)
         
-        # Gráfico de barras agrupadas
         plt.figure(figsize=(12, 7))
         pivot_ventas.plot(kind='bar', color=colores, edgecolor='black')
         plt.title(f'Ventas por Día de la Semana y por Sede\n{fecha_inicio} a {fecha_fin}', fontsize=18, weight='bold')
@@ -396,17 +391,18 @@ def generar_graficos_semanales(df, fecha_inicio, fecha_fin):
         plt.close()
         logger.info("Gráfico 'ventas_dia_sede.png' generado correctamente.")
 
-        ##############################
         # 2. Distribución de ventas por Sede (Gráfico de torta)
-        ##############################
+        # Agrupar por sede usando la suma de "Precio"
         ventas_sedes = df.groupby('Sede')['Precio'].sum()
         plt.figure(figsize=(8, 8))
-        # Usar los mismos colores para cada sede (en función de la cantidad de sedes)
+        # Seleccionar colores según la cantidad de sedes
         colores_torta = colores[:len(ventas_sedes)]
-        patches, texts, autotexts = plt.pie(ventas_sedes, labels=ventas_sedes.index, autopct='%1.1f%%',
-                                            colors=colores_torta, startangle=90, textprops={'fontsize': 14})
+        patches, texts, autotexts = plt.pie(
+            ventas_sedes, labels=ventas_sedes.index, autopct='%1.1f%%',
+            colors=colores_torta, startangle=90, textprops={'fontsize': 14}
+        )
         plt.title('Distribución de Ventas por Sede', fontsize=18, weight='bold')
-        # Crear una leyenda con la correspondencia de colores
+        # Leyenda que indica la correspondencia entre color y sede
         leyenda = [f"{sede}: {color}" for sede, color in zip(ventas_sedes.index, colores_torta)]
         plt.legend(patches, leyenda, title="Sedes y Colores", loc="best", fontsize=12)
         plt.tight_layout()
@@ -414,9 +410,7 @@ def generar_graficos_semanales(df, fecha_inicio, fecha_fin):
         plt.close()
         logger.info("Gráfico 'ventas_sedes.png' generado correctamente.")
 
-        ##############################
         # 3. Evolución diaria de ventas
-        ##############################
         plt.figure(figsize=(12, 6))
         df['Fecha'] = df['Timestamp'].dt.date
         ventas_diarias = df.groupby('Fecha')['Precio'].sum()
@@ -431,24 +425,24 @@ def generar_graficos_semanales(df, fecha_inicio, fecha_fin):
         plt.close()
         logger.info("Gráfico 'evolucion_diaria.png' generado correctamente.")
 
-        ##############################
-        # 4. Ticket Promedio por Sede
-        ##############################
-        # Calcular ticket promedio: total ventas / total unidades para cada sede
-        ticket_promedio = df.groupby('Sede').apply(lambda x: x['Precio'].sum() / x['Cantidad'].sum())
+        # 4. Top 10 Productos Más Vendidos
+        # Concatenar Marca, Modelo y tamano para identificar el producto
+        df['Producto'] = df['Marca'] + " " + df['Modelo'] + " " + df['tamano']
+        top10 = df.groupby('Producto')['Cantidad'].sum().nlargest(10)
         plt.figure(figsize=(10, 6))
-        sns.barplot(x=ticket_promedio.index, y=ticket_promedio.values, palette=colores[:len(ticket_promedio)])
-        plt.title('Ticket Promedio por Sede', fontsize=18, weight='bold')
-        plt.xlabel('Sede')
-        plt.ylabel('Ticket Promedio (S/.)')
+        sns.barplot(x=top10.values, y=top10.index, palette=colores[:len(top10)])
+        plt.title('Top 10 Productos Más Vendidos', fontsize=18, weight='bold')
+        plt.xlabel('Unidades Vendidas')
+        plt.ylabel('Producto')
         plt.tight_layout()
-        plt.savefig('ticket_promedio.png')
+        plt.savefig('top10_productos.png')
         plt.close()
-        logger.info("Gráfico 'ticket_promedio.png' generado correctamente.")
+        logger.info("Gráfico 'top10_productos.png' generado correctamente.")
 
     except Exception as e:
         logger.error(f"Error al generar gráficos semanales: {str(e)}")
         raise
+
 
 
 
@@ -525,7 +519,7 @@ def crear_cuerpo_email_semanal(analisis, fecha_inicio, fecha_fin):
                     <img src="cid:evolucion_diaria.png" alt="Evolución Diaria de Ventas" style="width:100%; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,0.1);">
                 </div>
                 <div>
-                    <img src="cid:ticket_promedio.png" alt="Ticket Promedio por Sede" style="width:100%; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+                    <img src="cid:top10_productos.png" alt="Top 10 Productos Más Vendidos" style="width:100%; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,0.1);">
                 </div>
             </div>
             <!-- Hallazgos Destacados -->
@@ -550,6 +544,7 @@ def crear_cuerpo_email_semanal(analisis, fecha_inicio, fecha_fin):
     return cuerpo
 
 
+
 def enviar_email_semanal(analisis, df, fecha_inicio, fecha_fin):
     """
     Envía el correo semanal adjuntando los gráficos actualizados y un CSV con el detalle de ventas.
@@ -568,7 +563,7 @@ def enviar_email_semanal(analisis, df, fecha_inicio, fecha_fin):
         msg.attach(MIMEText(body, 'html'))
         
         # Adjuntar las imágenes de los gráficos generados
-        imagenes = ['ventas_dia_sede.png', 'ventas_sedes.png', 'evolucion_diaria.png', 'ticket_promedio.png']
+        imagenes = ['ventas_dia_sede.png', 'ventas_sedes.png', 'evolucion_diaria.png', 'top10_productos.png']
         for imagen in imagenes:
             with open(imagen, 'rb') as img:
                 image = MIMEImage(img.read(), name=os.path.basename(imagen))
@@ -596,6 +591,7 @@ def enviar_email_semanal(analisis, df, fecha_inicio, fecha_fin):
     except Exception as e:
         logger.error(f"Error al enviar email semanal: {str(e)}")
         raise
+
 
 
 def obtener_datos_semanales():
