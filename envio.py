@@ -46,7 +46,7 @@ SENDER_EMAIL = os.environ.get('EMAIL_USER')
 SENDER_PASSWORD = os.environ.get('EMAIL_PASSWORD')
 
 # Direcciones de Correo Destinatarias
-RECEIVER_EMAILS = ["gfxjef@gmail.com", "camachoteofilo1958@gmail.com", "max.campor@gmail.com", "milazcyn@gmail.com"]
+RECEIVER_EMAILS = ["gfxjef@gmail.com"]
 
 
 ######################################
