@@ -361,16 +361,12 @@ def generar_graficos_semanales(df, fecha_inicio, fecha_fin):
       - fecha_fin: Rango de fechas (para visualización) en formato 'dd/mm/YYYY'.
     """
     try:
-        import matplotlib.pyplot as plt
-        import seaborn as sns
-
-        # Definir paleta de colores (ajustable según la cantidad de sedes o productos)
+        # Definir paleta de colores
         colores = ['#2A5C8F', '#30A5BF', '#F2B705', '#F25C05', '#7D3C98', '#27AE60']
         
         #######################################
         # 1. Ventas por día de la semana por Sede
         #######################################
-        # Diccionario para convertir el día completo en inglés a abreviatura en español
         dias_abreviados = {
             'Monday': 'Lun',
             'Tuesday': 'Mar',
@@ -380,17 +376,15 @@ def generar_graficos_semanales(df, fecha_inicio, fecha_fin):
             'Saturday': 'Sab',
             'Sunday': 'Dom'
         }
-        # Extraer el nombre del día y obtener la abreviatura
         df['Dia_Ingles'] = df['Timestamp'].dt.day_name()
         df['Dia_Abreviado'] = df['Dia_Ingles'].map(dias_abreviados)
-        # Tabla pivote: índice = día abreviado, columnas = Sede, valores = suma de Precio
         orden_dias = ['Lun', 'Mar', 'Mier', 'Juev', 'Vier', 'Sab', 'Dom']
         pivot_ventas = df.pivot_table(index='Dia_Abreviado', columns='Sede', values='Precio', aggfunc='sum')
         pivot_ventas = pivot_ventas.reindex(orden_dias)
         
         plt.figure(figsize=(12, 7))
         pivot_ventas.plot(kind='bar', color=colores, edgecolor='black')
-        # Título actualizado: tamaño menor, sin fecha y centrado
+        # Título actualizado: tamaño 16, centrado, sin fecha
         plt.title('Ventas por Día de la Semana y por Sede', fontsize=16, weight='bold', loc='center')
         plt.xlabel('Día de la Semana')
         plt.ylabel('Total Ventas (S/.)')
@@ -404,15 +398,12 @@ def generar_graficos_semanales(df, fecha_inicio, fecha_fin):
         ####################################################
         # 2. Distribución de ventas por Sede (Gráfico de torta)
         ####################################################
-        # Agrupar por 'Sede' y sumar la columna 'Precio'
         ventas_sedes = df.groupby('Sede')['Precio'].sum()
-        # Imprimir en consola para depuración
         print("DEBUG - Ventas por Sede (totales):")
         print(ventas_sedes)
         logger.info(f"DEBUG - Ventas por Sede (totales): {ventas_sedes.to_dict()}")
         
         plt.figure(figsize=(8, 8))
-        # Seleccionar colores según la cantidad de sedes
         colores_torta = colores[:len(ventas_sedes)]
         patches, texts, autotexts = plt.pie(
             ventas_sedes,
@@ -423,7 +414,7 @@ def generar_graficos_semanales(df, fecha_inicio, fecha_fin):
             textprops={'fontsize': 14}
         )
         plt.title('Distribución de Ventas por Sede', fontsize=18, weight='bold')
-        # Actualizar leyenda: mostrar "Sede: S/ monto"
+        # Leyenda: "Sede y Montos"
         leyenda = [f"{sede}: S/ {ventas_sedes[sede]:,.2f}" for sede in ventas_sedes.index]
         plt.legend(patches, leyenda, title="Sede y Montos", loc="best", fontsize=12)
         plt.tight_layout()
@@ -475,6 +466,7 @@ def generar_graficos_semanales(df, fecha_inicio, fecha_fin):
 
 
 
+
 def generar_analisis_semanal(df, df_semana_anterior=None):
     """
     Genera un análisis semanal con métricas globales y comparativas, utilizando los datos
@@ -486,7 +478,6 @@ def generar_analisis_semanal(df, df_semana_anterior=None):
         if 'Producto' not in df.columns:
             df['Producto'] = df['Marca'] + " " + df['Modelo'] + " " + df['tamano']
         
-        # Agrupar por fecha para obtener ventas diarias (se utiliza para calcular el promedio y el máximo)
         ventas_por_dia = df.groupby(df['Timestamp'].dt.date)['Precio'].sum()
         
         analisis = {
@@ -587,6 +578,7 @@ def crear_cuerpo_email_semanal(analisis, fecha_inicio, fecha_fin):
 
 
 
+
 def enviar_email_semanal(analisis, df, fecha_inicio, fecha_fin):
     try:
         msg = MIMEMultipart()
@@ -663,7 +655,6 @@ def generate_weekly_report():
         df_ventas = obtener_datos_semanales()
         if not df_ventas.empty:
             last_monday, last_sunday = get_last_week_range()
-            # Formato para mostrar en el correo (por ejemplo, '27/01/2025')
             fecha_inicio_email = last_monday.strftime('%d/%m/%Y')
             fecha_fin_email = last_sunday.strftime('%d/%m/%Y')
             
@@ -680,6 +671,7 @@ def generate_weekly_report():
         logger.error(f"Error en reporte semanal: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
+
 ######################################
 # ENDPOINTS ADICIONALES Y HOME
 ######################################
@@ -691,7 +683,7 @@ def get_last_week_range():
     
     Retorna:
       - last_monday (datetime): Fecha del último lunes.
-      - last_sunday (datetime): Fecha del domingo anterior al lunes de la semana en curso.
+      - last_sunday (datetime): Fecha del domingo anterior al lunes de la semana actual.
     """
     today = datetime.now()
     # Calcula el lunes de la semana actual (0 = lunes, 6 = domingo)
