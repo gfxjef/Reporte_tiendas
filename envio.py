@@ -90,9 +90,12 @@ def generar_graficos(df, fecha_reporte):
         plt.close()
         logger.info("Gráfico 'metodos_pago.png' generado correctamente.")
 
-        # 3. Top 5 productos más vendidos
+        # 3. Top 5 productos más vendidos (se muestra Marca + Modelo + tamano)
         plt.figure(figsize=(10, 6))
-        top_productos = df.groupby('SKU')['Cantidad'].sum().nlargest(5)
+        # Crear la columna 'Producto' si no existe
+        if 'Producto' not in df.columns:
+            df['Producto'] = df['Marca'] + " " + df['Modelo'] + " " + df['tamano']
+        top_productos = df.groupby('Producto')['Cantidad'].sum().nlargest(5)
         ax = sns.barplot(x=top_productos.values, y=top_productos.index, palette=colores)
         ax.set_title('Top 5 Productos Más Vendidos', fontsize=18, weight='bold')
         ax.set_xlabel('Unidades Vendidas')
@@ -116,16 +119,21 @@ def generar_graficos(df, fecha_reporte):
         logger.error(f"Error al generar gráficos diarios: {str(e)}")
         raise
 
+
 def generar_analisis(df):
     """
     Genera un análisis de ventas diario con métricas globales y por sedes.
     """
     try:
+        # Asegurarse de tener la columna 'Producto' (Marca + Modelo + tamano)
+        if 'Producto' not in df.columns:
+            df['Producto'] = df['Marca'] + " " + df['Modelo'] + " " + df['tamano']
+            
         analisis = {
             'total_ventas': df['Precio'].sum(),
             'total_unidades': df['Cantidad'].sum(),
             'venta_promedio': df['Precio'].mean(),
-            'top_producto': df['SKU'].mode()[0],
+            'top_producto': df['Producto'].mode()[0],  # Producto líder con descripción completa
             'modo_venta_comun': df['Modo de Venta'].mode()[0],
             'sede_mas_ventas': df.groupby('Sede')['Precio'].sum().idxmax(),
             'detalle_sedes': df.groupby('Sede').agg({
