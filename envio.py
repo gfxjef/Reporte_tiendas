@@ -478,12 +478,18 @@ def generar_graficos_semanales(df, fecha_inicio, fecha_fin):
 
 def generar_analisis_semanal(df, df_semana_anterior=None):
     """
-    Genera un análisis semanal con métricas globales.
-    Se ha actualizado para obtener el nombre completo del producto (concatenado) en lugar del SKU.
+    Genera un análisis semanal con métricas globales y comparativas, utilizando los datos
+    de la última semana. Se calcula el nombre completo del producto concatenando las columnas
+    'Marca', 'Modelo' y 'tamano' para determinar el producto más vendido.
     """
     try:
-        # Agrupar ventas diarias para cálculo de métricas
+        # Si la columna 'Producto' no existe, se crea concatenando 'Marca', 'Modelo' y 'tamano'
+        if 'Producto' not in df.columns:
+            df['Producto'] = df['Marca'] + " " + df['Modelo'] + " " + df['tamano']
+        
+        # Agrupar por fecha para obtener ventas diarias (se utiliza para calcular el promedio y el máximo)
         ventas_por_dia = df.groupby(df['Timestamp'].dt.date)['Precio'].sum()
+        
         analisis = {
             'total_ventas': df['Precio'].sum(),
             'total_unidades': df['Cantidad'].sum(),
@@ -492,10 +498,9 @@ def generar_analisis_semanal(df, df_semana_anterior=None):
             'max_venta_dia': ventas_por_dia.max(),
             'sede_mas_ventas': df.groupby('Sede')['Precio'].sum().idxmax(),
             'ventas_sede_lider': df.groupby('Sede')['Precio'].sum().max(),
-            # Ahora se utiliza la columna 'Producto' (concatenada) para obtener el producto top
             'top_producto': df.groupby('Producto')['Cantidad'].sum().idxmax(),
             'unidades_top_producto': df.groupby('Producto')['Cantidad'].sum().max(),
-            'crecimiento_semanal': 0  # Aquí se podría implementar la comparación con la semana anterior
+            'crecimiento_semanal': 0  # Aquí podrías implementar la comparación con la semana anterior
         }
         logger.info("Análisis semanal generado correctamente.")
         return analisis
