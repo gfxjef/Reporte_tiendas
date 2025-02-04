@@ -365,12 +365,13 @@ def generar_graficos_semanales(df, fecha_inicio, fecha_fin):
         import matplotlib.pyplot as plt
         import seaborn as sns
 
-        # Definir paleta de colores
+        # Definir paleta de colores (ajustable según la cantidad de sedes o productos)
         colores = ['#2A5C8F', '#30A5BF', '#F2B705', '#F25C05', '#7D3C98', '#27AE60']
         
         #######################################
         # 1. Ventas por día de la semana por Sede
         #######################################
+        # Diccionario para convertir el día completo en inglés a abreviatura en español
         dias_abreviados = {
             'Monday': 'Lun',
             'Tuesday': 'Mar',
@@ -380,15 +381,18 @@ def generar_graficos_semanales(df, fecha_inicio, fecha_fin):
             'Saturday': 'Sab',
             'Sunday': 'Dom'
         }
+        # Extraer el nombre del día y obtener la abreviatura
         df['Dia_Ingles'] = df['Timestamp'].dt.day_name()
         df['Dia_Abreviado'] = df['Dia_Ingles'].map(dias_abreviados)
+        # Tabla pivote: índice = día abreviado, columnas = Sede, valores = suma de Precio
         orden_dias = ['Lun', 'Mar', 'Mier', 'Juev', 'Vier', 'Sab', 'Dom']
         pivot_ventas = df.pivot_table(index='Dia_Abreviado', columns='Sede', values='Precio', aggfunc='sum')
         pivot_ventas = pivot_ventas.reindex(orden_dias)
         
         plt.figure(figsize=(12, 7))
         pivot_ventas.plot(kind='bar', color=colores, edgecolor='black')
-        plt.title(f'Ventas por Día de la Semana y por Sede\n{fecha_inicio} a {fecha_fin}', fontsize=18, weight='bold')
+        # Título actualizado: tamaño menor, sin fecha y centrado
+        plt.title('Ventas por Día de la Semana y por Sede', fontsize=16, weight='bold', loc='center')
         plt.xlabel('Día de la Semana')
         plt.ylabel('Total Ventas (S/.)')
         plt.xticks(rotation=0)
@@ -401,20 +405,28 @@ def generar_graficos_semanales(df, fecha_inicio, fecha_fin):
         ####################################################
         # 2. Distribución de ventas por Sede (Gráfico de torta)
         ####################################################
+        # Agrupar por 'Sede' y sumar la columna 'Precio'
         ventas_sedes = df.groupby('Sede')['Precio'].sum()
+        # Imprimir en consola para depuración
         print("DEBUG - Ventas por Sede (totales):")
         print(ventas_sedes)
         logger.info(f"DEBUG - Ventas por Sede (totales): {ventas_sedes.to_dict()}")
         
         plt.figure(figsize=(8, 8))
+        # Seleccionar colores según la cantidad de sedes
         colores_torta = colores[:len(ventas_sedes)]
         patches, texts, autotexts = plt.pie(
-            ventas_sedes, labels=ventas_sedes.index, autopct='%1.1f%%',
-            colors=colores_torta, startangle=90, textprops={'fontsize': 14}
+            ventas_sedes,
+            labels=ventas_sedes.index,
+            autopct='%1.1f%%',
+            colors=colores_torta,
+            startangle=90,
+            textprops={'fontsize': 14}
         )
         plt.title('Distribución de Ventas por Sede', fontsize=18, weight='bold')
-        leyenda = [f"{sede}: {color}" for sede, color in zip(ventas_sedes.index, colores_torta)]
-        plt.legend(patches, leyenda, title="Sedes y Colores", loc="best", fontsize=12)
+        # Actualizar leyenda: mostrar "Sede: S/ monto"
+        leyenda = [f"{sede}: S/ {ventas_sedes[sede]:,.2f}" for sede in ventas_sedes.index]
+        plt.legend(patches, leyenda, title="Sede y Montos", loc="best", fontsize=12)
         plt.tight_layout()
         plt.savefig('ventas_sedes.png')
         plt.close()
@@ -440,6 +452,7 @@ def generar_graficos_semanales(df, fecha_inicio, fecha_fin):
         #######################################
         # 4. Top 10 Productos Más Vendidos
         #######################################
+        # Crear columna "Producto" concatenando Marca, Modelo y tamano
         df['Producto'] = df['Marca'] + " " + df['Modelo'] + " " + df['tamano']
         top10 = df.groupby('Producto')['Cantidad'].sum().nlargest(10)
         plt.figure(figsize=(10, 6))
@@ -462,8 +475,14 @@ def generar_graficos_semanales(df, fecha_inicio, fecha_fin):
 
 
 
+
 def generar_analisis_semanal(df, df_semana_anterior=None):
+    """
+    Genera un análisis semanal con métricas globales.
+    Se ha actualizado para obtener el nombre completo del producto (concatenado) en lugar del SKU.
+    """
     try:
+        # Agrupar ventas diarias para cálculo de métricas
         ventas_por_dia = df.groupby(df['Timestamp'].dt.date)['Precio'].sum()
         analisis = {
             'total_ventas': df['Precio'].sum(),
@@ -473,9 +492,10 @@ def generar_analisis_semanal(df, df_semana_anterior=None):
             'max_venta_dia': ventas_por_dia.max(),
             'sede_mas_ventas': df.groupby('Sede')['Precio'].sum().idxmax(),
             'ventas_sede_lider': df.groupby('Sede')['Precio'].sum().max(),
-            'top_producto': df.groupby('SKU')['Cantidad'].sum().idxmax(),
-            'unidades_top_producto': df.groupby('SKU')['Cantidad'].sum().max(),
-            'crecimiento_semanal': 0  # Aquí podrías implementar la comparación con la semana anterior
+            # Ahora se utiliza la columna 'Producto' (concatenada) para obtener el producto top
+            'top_producto': df.groupby('Producto')['Cantidad'].sum().idxmax(),
+            'unidades_top_producto': df.groupby('Producto')['Cantidad'].sum().max(),
+            'crecimiento_semanal': 0  # Aquí se podría implementar la comparación con la semana anterior
         }
         logger.info("Análisis semanal generado correctamente.")
         return analisis
@@ -485,6 +505,13 @@ def generar_analisis_semanal(df, df_semana_anterior=None):
 
 
 def crear_cuerpo_email_semanal(analisis, fecha_inicio, fecha_fin):
+    """
+    Crea el cuerpo HTML del correo semanal con métricas principales, gráficos y hallazgos.
+    Se han actualizado algunos textos:
+      - Se elimina la fecha redundante en el título del gráfico "Ventas por Día de la Semana y por Sede".
+      - En la leyenda del gráfico de torta se muestra "Sede y Montos" (color, sede y monto).
+      - Se muestra "Nombre del producto:" en lugar de "Producto más vendido:".
+    """
     cuerpo = f"""
     <!DOCTYPE html>
     <html lang="es">
@@ -537,7 +564,7 @@ def crear_cuerpo_email_semanal(analisis, fecha_inicio, fecha_fin):
                 <ul style="color:#555; font-size:16px;">
                     <li><strong>Día con mayor venta:</strong> {analisis['dia_max_ventas']} (S/. {analisis['max_venta_dia']:,.2f})</li>
                     <li><strong>Sede líder:</strong> {analisis['sede_mas_ventas']} (S/. {analisis['ventas_sede_lider']:,.2f})</li>
-                    <li><strong>Producto más vendido:</strong> {analisis['top_producto']} ({analisis['unidades_top_producto']} unidades)</li>
+                    <li><strong>Nombre del producto:</strong> {analisis['top_producto']} ({analisis['unidades_top_producto']} unidades)</li>
                     <li><strong>Crecimiento vs semana anterior:</strong> {analisis['crecimiento_semanal']}%</li>
                 </ul>
             </div>
@@ -551,6 +578,7 @@ def crear_cuerpo_email_semanal(analisis, fecha_inicio, fecha_fin):
     </html>
     """
     return cuerpo
+
 
 
 
