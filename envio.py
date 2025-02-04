@@ -355,16 +355,22 @@ def generar_graficos_semanales(df, fecha_inicio, fecha_fin):
       3. Evolución diaria de ventas.
       4. Top 10 Productos Más Vendidos (concatenando Marca, Modelo y tamano).
     
+    Se filtran los datos para utilizar solo la última semana completa.
+    
     Parámetros:
-      - df: DataFrame con los datos.
-      - fecha_inicio: Rango de fechas (para visualización) en formato 'dd/mm/YYYY'.
-      - fecha_fin: Rango de fechas (para visualización) en formato 'dd/mm/YYYY'.
+      - df: DataFrame con los datos (debe contener datos de la semana anterior y la última semana).
+      - fecha_inicio: Rango de fechas (para visualización) de la última semana en formato 'dd/mm/YYYY'.
+      - fecha_fin: Rango de fechas (para visualización) de la última semana en formato 'dd/mm/YYYY'.
     """
     try:
         import matplotlib.pyplot as plt
         import seaborn as sns
 
         colores = ['#2A5C8F', '#30A5BF', '#F2B705', '#F25C05', '#7D3C98', '#27AE60']
+        
+        # Para gráficos (1), (2), (3) y (4) usaremos solo los datos de la última semana
+        last_monday, last_sunday = get_last_week_range()
+        df_last_week = df[df['Timestamp'].dt.date.between(last_monday.date(), last_sunday.date())]
         
         # 1. Ventas por día de la semana por Sede
         dias_abreviados = {
@@ -376,10 +382,10 @@ def generar_graficos_semanales(df, fecha_inicio, fecha_fin):
             'Saturday': 'Sab',
             'Sunday': 'Dom'
         }
-        df['Dia_Ingles'] = df['Timestamp'].dt.day_name()
-        df['Dia_Abreviado'] = df['Dia_Ingles'].map(dias_abreviados)
+        df_last_week['Dia_Ingles'] = df_last_week['Timestamp'].dt.day_name()
+        df_last_week['Dia_Abreviado'] = df_last_week['Dia_Ingles'].map(dias_abreviados)
         orden_dias = ['Lun', 'Mar', 'Mier', 'Juev', 'Vier', 'Sab', 'Dom']
-        pivot_ventas = df.pivot_table(index='Dia_Abreviado', columns='Sede', values='Precio', aggfunc='sum')
+        pivot_ventas = df_last_week.pivot_table(index='Dia_Abreviado', columns='Sede', values='Precio', aggfunc='sum')
         pivot_ventas = pivot_ventas.reindex(orden_dias)
         
         plt.figure(figsize=(12, 7))
@@ -397,7 +403,7 @@ def generar_graficos_semanales(df, fecha_inicio, fecha_fin):
         ####################################################
         # 2. Distribución de ventas por Sede (Gráfico de torta)
         ####################################################
-        ventas_sedes = df.groupby('Sede')['Precio'].sum()
+        ventas_sedes = df_last_week.groupby('Sede')['Precio'].sum()
         print("DEBUG - Ventas por Sede (totales):")
         print(ventas_sedes)
         logger.info(f"DEBUG - Ventas por Sede (totales): {ventas_sedes.to_dict()}")
@@ -424,8 +430,8 @@ def generar_graficos_semanales(df, fecha_inicio, fecha_fin):
         # 3. Evolución diaria de ventas
         #######################################
         plt.figure(figsize=(12, 6))
-        df['Fecha'] = df['Timestamp'].dt.date
-        ventas_diarias = df.groupby('Fecha')['Precio'].sum()
+        df_last_week['Fecha'] = df_last_week['Timestamp'].dt.date
+        ventas_diarias = df_last_week.groupby('Fecha')['Precio'].sum()
         sns.lineplot(x=list(ventas_diarias.index), y=ventas_diarias.values,
                      marker='o', color=colores[0], linewidth=2.5)
         plt.title('Evolución Diaria de Ventas', fontsize=18, weight='bold')
@@ -440,8 +446,8 @@ def generar_graficos_semanales(df, fecha_inicio, fecha_fin):
         #######################################
         # 4. Top 10 Productos Más Vendidos
         #######################################
-        df['Producto'] = df['Marca'] + " " + df['Modelo'] + " " + df['tamano']
-        top10 = df.groupby('Producto')['Cantidad'].sum().nlargest(10)
+        df_last_week['Producto'] = df_last_week['Marca'] + " " + df_last_week['Modelo'] + " " + df_last_week['tamano']
+        top10 = df_last_week.groupby('Producto')['Cantidad'].sum().nlargest(10)
         plt.figure(figsize=(10, 6))
         sns.barplot(x=top10.values, y=top10.index, palette=colores[:len(top10)])
         plt.title('Top 10 Productos Más Vendidos', fontsize=18, weight='bold')
@@ -458,22 +464,18 @@ def generar_graficos_semanales(df, fecha_inicio, fecha_fin):
 
 
 
-
-
-
-
-
-
-
 def generar_analisis_semanal(df, df_semana_anterior=None):
     """
     Genera un análisis semanal con métricas globales y comparativas utilizando
     los datos de la última semana completa. Se crea la columna 'Producto' si no existe.
+    También calcula el crecimiento semanal usando la función 'generar_grafico_evolucion_semanal'.
     """
     try:
+        # Asegurarse de que exista la columna 'Producto'
         if 'Producto' not in df.columns:
             df['Producto'] = df['Marca'] + " " + df['Modelo'] + " " + df['tamano']
         
+        # Para el análisis, usamos todos los datos obtenidos (que abarcan la semana anterior y la última semana)
         ventas_por_dia = df.groupby(df['Timestamp'].dt.date)['Precio'].sum()
         crecimiento = generar_grafico_evolucion_semanal(df)
         
@@ -497,9 +499,6 @@ def generar_analisis_semanal(df, df_semana_anterior=None):
 
 
 def crear_cuerpo_email_semanal(analisis, fecha_inicio, fecha_fin):
-    """
-    Crea el cuerpo HTML del correo semanal con métricas principales, gráficos y hallazgos.
-    """
     cuerpo = f"""
     <!DOCTYPE html>
     <html lang="es">
@@ -576,6 +575,8 @@ def crear_cuerpo_email_semanal(analisis, fecha_inicio, fecha_fin):
 
 
 
+
+
 def enviar_email_semanal(analisis, df, fecha_inicio, fecha_fin):
     try:
         msg = MIMEMultipart()
@@ -626,14 +627,24 @@ def enviar_email_semanal(analisis, df, fecha_inicio, fecha_fin):
 
 
 
+
 def obtener_datos_semanales():
     """
-    Extrae los datos de ventas de la última semana completa (último lunes a domingo)
-    desde la base de datos.
+    Extrae los datos de ventas para abarcar desde el lunes de la semana anterior
+    hasta el domingo de la última semana completa.
+    
+    Esto permite luego filtrar los datos para:
+      - Los gráficos (usando solo la última semana).
+      - La evolución (comparando la semana anterior y la última semana).
+      
+    Retorna:
+      - df: DataFrame de pandas con los registros en el rango.
     """
     try:
         last_monday, last_sunday = get_last_week_range()
-        fecha_inicio_query = last_monday.strftime('%Y-%m-%d')
+        prev_monday, _ = get_previous_week_range(last_monday, last_sunday)
+        # Queremos datos desde prev_monday hasta last_sunday (ambas semanas)
+        fecha_inicio_query = prev_monday.strftime('%Y-%m-%d')
         fecha_fin_query = last_sunday.strftime('%Y-%m-%d')
         
         conn = mysql.connector.connect(**DB_CONFIG)
@@ -641,7 +652,8 @@ def obtener_datos_semanales():
             SELECT * FROM ventas_totales_2024 
             WHERE DATE(`Timestamp`) BETWEEN %s AND %s
         """
-        df = pd.read_sql(query, conn, parse_dates=['Timestamp'], params=(fecha_inicio_query, fecha_fin_query))
+        df = pd.read_sql(query, conn, parse_dates=['Timestamp'],
+                         params=(fecha_inicio_query, fecha_fin_query))
         conn.close()
         logger.info("Datos semanales obtenidos correctamente.")
         return df
@@ -680,7 +692,7 @@ def generate_weekly_report():
 
 def get_last_week_range():
     """
-    Calcula el rango completo de la última semana (último lunes hasta el domingo anterior).
+    Calcula el rango completo de la última semana completa (último lunes hasta el domingo anterior).
     
     Retorna:
       - last_monday (datetime): Fecha del último lunes.
@@ -692,26 +704,36 @@ def get_last_week_range():
     last_sunday = monday_this_week - timedelta(days=1)
     return last_monday, last_sunday
 
+def get_previous_week_range(last_monday, last_sunday):
+    """
+    Calcula el rango de la semana anterior al rango dado.
+    
+    Retorna:
+      - prev_monday (datetime): Fecha del lunes de la semana anterior.
+      - prev_sunday (datetime): Fecha del domingo de la semana anterior.
+    """
+    prev_monday = last_monday - timedelta(days=7)
+    prev_sunday = last_sunday - timedelta(days=7)
+    return prev_monday, prev_sunday
+
+
 from datetime import timedelta  # ya importado, se muestra para claridad
 
 def generar_grafico_evolucion_semanal(df):
     """
     Genera un gráfico de barras comparando el total de ventas (columna Precio)
-    de la última semana completa (último lunes a domingo) contra la semana anterior.
+    de la última semana completa contra la semana anterior.
     
     Calcula el crecimiento porcentual:
         Crecimiento (%) = ((Ventas Última Semana - Ventas Semana Anterior) / Ventas Semana Anterior) * 100
     
-    Parámetros:
-      - df: DataFrame con 'Timestamp' y 'Precio'.
-            
     Retorna:
       - growth: Porcentaje de crecimiento.
     """
     last_monday, last_sunday = get_last_week_range()
-    prev_monday = last_monday - timedelta(days=7)
-    prev_sunday = last_sunday - timedelta(days=7)
+    prev_monday, prev_sunday = get_previous_week_range(last_monday, last_sunday)
     
+    # Filtrar datos para cada período
     df_last = df[(df['Timestamp'].dt.date >= last_monday.date()) & (df['Timestamp'].dt.date <= last_sunday.date())]
     df_prev = df[(df['Timestamp'].dt.date >= prev_monday.date()) & (df['Timestamp'].dt.date <= prev_sunday.date())]
     
@@ -733,7 +755,7 @@ def generar_grafico_evolucion_semanal(df):
     
     for bar in barras:
         altura = bar.get_height()
-        plt.text(bar.get_x() + bar.get_width() / 2.0, altura, f"S/ {altura:,.2f}", 
+        plt.text(bar.get_x() + bar.get_width()/2.0, altura, f"S/ {altura:,.2f}", 
                  va='bottom', ha='center', fontsize=12)
     
     plt.tight_layout()
@@ -742,6 +764,7 @@ def generar_grafico_evolucion_semanal(df):
     logger.info("Gráfico 'evolucion_semanal.png' generado correctamente.")
     
     return growth
+
 
 
 ######################################
