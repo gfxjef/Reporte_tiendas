@@ -354,14 +354,25 @@ def generar_graficos_semanales(df, fecha_inicio, fecha_fin):
       1. Ventas por día de la semana desglosadas por sede (con días abreviados).
       2. Distribución de ventas por sede en gráfico de torta (usando montos de "Precio").
       3. Evolución diaria de ventas.
-      4. Top 10 Productos Más Vendidos (Marca + Modelo + tamano).
+      4. Top 10 Productos Más Vendidos (concatenando Marca, Modelo y tamano).
+    
+    Parámetros:
+      - df: DataFrame de pandas que contiene los datos.
+      - fecha_inicio: fecha de inicio del período (cadena, ej. '27/01/2025').
+      - fecha_fin: fecha de fin del período (cadena, ej. '02/02/2025').
     """
     try:
-        # Definir colores a utilizar (se puede ampliar la paleta según la cantidad de sedes)
+        import matplotlib.pyplot as plt
+        import seaborn as sns
+        import pandas as pd
+
+        # Definir paleta de colores (ajustable según la cantidad de sedes o productos)
         colores = ['#2A5C8F', '#30A5BF', '#F2B705', '#F25C05', '#7D3C98', '#27AE60']
         
-        # 1. Ventas por día de la semana desglosadas por Sede con días abreviados
-        # Diccionario para pasar de día completo en inglés a abreviatura en español
+        #######################################
+        # 1. Ventas por día de la semana por Sede
+        #######################################
+        # Diccionario para convertir el día completo en inglés a abreviatura en español
         dias_abreviados = {
             'Monday': 'Lun',
             'Tuesday': 'Mar',
@@ -371,12 +382,13 @@ def generar_graficos_semanales(df, fecha_inicio, fecha_fin):
             'Saturday': 'Sab',
             'Sunday': 'Dom'
         }
+        # Extraer el nombre del día y obtener la abreviatura
         df['Dia_Ingles'] = df['Timestamp'].dt.day_name()
         df['Dia_Abreviado'] = df['Dia_Ingles'].map(dias_abreviados)
-        
-        # Pivot table: índice = día abreviado, columnas = sede, valores = suma de "Precio"
+        # Crear una tabla pivote: índice = día abreviado, columnas = Sede, valores = suma de Precio
         orden_dias = ['Lun', 'Mar', 'Mier', 'Juev', 'Vier', 'Sab', 'Dom']
-        pivot_ventas = df.pivot_table(index='Dia_Abreviado', columns='Sede', values='Precio', aggfunc='sum').reindex(orden_dias)
+        pivot_ventas = df.pivot_table(index='Dia_Abreviado', columns='Sede', values='Precio', aggfunc='sum')
+        pivot_ventas = pivot_ventas.reindex(orden_dias)
         
         plt.figure(figsize=(12, 7))
         pivot_ventas.plot(kind='bar', color=colores, edgecolor='black')
@@ -388,20 +400,32 @@ def generar_graficos_semanales(df, fecha_inicio, fecha_fin):
         plt.tight_layout()
         plt.savefig('ventas_dia_sede.png')
         plt.close()
+        # Registro en log para indicar que se generó correctamente
         logger.info("Gráfico 'ventas_dia_sede.png' generado correctamente.")
 
+        ####################################################
         # 2. Distribución de ventas por Sede (Gráfico de torta)
-        # Agrupar por sede usando la suma de "Precio"
+        ####################################################
+        # Agrupar por 'Sede' y sumar la columna 'Precio'
         ventas_sedes = df.groupby('Sede')['Precio'].sum()
+        # Imprimir en consola (o log) para depurar los totales por sede
+        print("DEBUG - Ventas por Sede (totales):")
+        print(ventas_sedes)
+        logger.info(f"DEBUG - Ventas por Sede (totales): {ventas_sedes.to_dict()}")
+        
         plt.figure(figsize=(8, 8))
         # Seleccionar colores según la cantidad de sedes
         colores_torta = colores[:len(ventas_sedes)]
         patches, texts, autotexts = plt.pie(
-            ventas_sedes, labels=ventas_sedes.index, autopct='%1.1f%%',
-            colors=colores_torta, startangle=90, textprops={'fontsize': 14}
+            ventas_sedes,
+            labels=ventas_sedes.index,
+            autopct='%1.1f%%',
+            colors=colores_torta,
+            startangle=90,
+            textprops={'fontsize': 14}
         )
         plt.title('Distribución de Ventas por Sede', fontsize=18, weight='bold')
-        # Leyenda que indica la correspondencia entre color y sede
+        # Crear leyenda que muestre la correspondencia entre color y sede
         leyenda = [f"{sede}: {color}" for sede, color in zip(ventas_sedes.index, colores_torta)]
         plt.legend(patches, leyenda, title="Sedes y Colores", loc="best", fontsize=12)
         plt.tight_layout()
@@ -409,8 +433,11 @@ def generar_graficos_semanales(df, fecha_inicio, fecha_fin):
         plt.close()
         logger.info("Gráfico 'ventas_sedes.png' generado correctamente.")
 
+        #######################################
         # 3. Evolución diaria de ventas
+        #######################################
         plt.figure(figsize=(12, 6))
+        # Extraer la fecha (sin hora) de cada registro
         df['Fecha'] = df['Timestamp'].dt.date
         ventas_diarias = df.groupby('Fecha')['Precio'].sum()
         sns.lineplot(x=list(ventas_diarias.index), y=ventas_diarias.values,
@@ -424,8 +451,10 @@ def generar_graficos_semanales(df, fecha_inicio, fecha_fin):
         plt.close()
         logger.info("Gráfico 'evolucion_diaria.png' generado correctamente.")
 
+        #######################################
         # 4. Top 10 Productos Más Vendidos
-        # Concatenar Marca, Modelo y tamano para identificar el producto
+        #######################################
+        # Concatenar Marca, Modelo y tamano para identificar cada producto
         df['Producto'] = df['Marca'] + " " + df['Modelo'] + " " + df['tamano']
         top10 = df.groupby('Producto')['Cantidad'].sum().nlargest(10)
         plt.figure(figsize=(10, 6))
@@ -441,6 +470,7 @@ def generar_graficos_semanales(df, fecha_inicio, fecha_fin):
     except Exception as e:
         logger.error(f"Error al generar gráficos semanales: {str(e)}")
         raise
+
 
 
 
