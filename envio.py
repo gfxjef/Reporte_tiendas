@@ -357,22 +357,20 @@ def generar_graficos_semanales(df, fecha_inicio, fecha_fin):
       4. Top 10 Productos Más Vendidos (concatenando Marca, Modelo y tamano).
     
     Parámetros:
-      - df: DataFrame de pandas que contiene los datos.
-      - fecha_inicio: fecha de inicio del período (cadena, ej. '27/01/2025').
-      - fecha_fin: fecha de fin del período (cadena, ej. '02/02/2025').
+      - df: DataFrame con los datos.
+      - fecha_inicio: Rango de fechas (para visualización) en formato 'dd/mm/YYYY'.
+      - fecha_fin: Rango de fechas (para visualización) en formato 'dd/mm/YYYY'.
     """
     try:
         import matplotlib.pyplot as plt
         import seaborn as sns
-        import pandas as pd
 
-        # Definir paleta de colores (ajustable según la cantidad de sedes o productos)
+        # Definir paleta de colores
         colores = ['#2A5C8F', '#30A5BF', '#F2B705', '#F25C05', '#7D3C98', '#27AE60']
         
         #######################################
         # 1. Ventas por día de la semana por Sede
         #######################################
-        # Diccionario para convertir el día completo en inglés a abreviatura en español
         dias_abreviados = {
             'Monday': 'Lun',
             'Tuesday': 'Mar',
@@ -382,10 +380,8 @@ def generar_graficos_semanales(df, fecha_inicio, fecha_fin):
             'Saturday': 'Sab',
             'Sunday': 'Dom'
         }
-        # Extraer el nombre del día y obtener la abreviatura
         df['Dia_Ingles'] = df['Timestamp'].dt.day_name()
         df['Dia_Abreviado'] = df['Dia_Ingles'].map(dias_abreviados)
-        # Crear una tabla pivote: índice = día abreviado, columnas = Sede, valores = suma de Precio
         orden_dias = ['Lun', 'Mar', 'Mier', 'Juev', 'Vier', 'Sab', 'Dom']
         pivot_ventas = df.pivot_table(index='Dia_Abreviado', columns='Sede', values='Precio', aggfunc='sum')
         pivot_ventas = pivot_ventas.reindex(orden_dias)
@@ -400,32 +396,23 @@ def generar_graficos_semanales(df, fecha_inicio, fecha_fin):
         plt.tight_layout()
         plt.savefig('ventas_dia_sede.png')
         plt.close()
-        # Registro en log para indicar que se generó correctamente
         logger.info("Gráfico 'ventas_dia_sede.png' generado correctamente.")
 
         ####################################################
         # 2. Distribución de ventas por Sede (Gráfico de torta)
         ####################################################
-        # Agrupar por 'Sede' y sumar la columna 'Precio'
         ventas_sedes = df.groupby('Sede')['Precio'].sum()
-        # Imprimir en consola (o log) para depurar los totales por sede
         print("DEBUG - Ventas por Sede (totales):")
         print(ventas_sedes)
         logger.info(f"DEBUG - Ventas por Sede (totales): {ventas_sedes.to_dict()}")
         
         plt.figure(figsize=(8, 8))
-        # Seleccionar colores según la cantidad de sedes
         colores_torta = colores[:len(ventas_sedes)]
         patches, texts, autotexts = plt.pie(
-            ventas_sedes,
-            labels=ventas_sedes.index,
-            autopct='%1.1f%%',
-            colors=colores_torta,
-            startangle=90,
-            textprops={'fontsize': 14}
+            ventas_sedes, labels=ventas_sedes.index, autopct='%1.1f%%',
+            colors=colores_torta, startangle=90, textprops={'fontsize': 14}
         )
         plt.title('Distribución de Ventas por Sede', fontsize=18, weight='bold')
-        # Crear leyenda que muestre la correspondencia entre color y sede
         leyenda = [f"{sede}: {color}" for sede, color in zip(ventas_sedes.index, colores_torta)]
         plt.legend(patches, leyenda, title="Sedes y Colores", loc="best", fontsize=12)
         plt.tight_layout()
@@ -437,7 +424,6 @@ def generar_graficos_semanales(df, fecha_inicio, fecha_fin):
         # 3. Evolución diaria de ventas
         #######################################
         plt.figure(figsize=(12, 6))
-        # Extraer la fecha (sin hora) de cada registro
         df['Fecha'] = df['Timestamp'].dt.date
         ventas_diarias = df.groupby('Fecha')['Precio'].sum()
         sns.lineplot(x=list(ventas_diarias.index), y=ventas_diarias.values,
@@ -454,7 +440,6 @@ def generar_graficos_semanales(df, fecha_inicio, fecha_fin):
         #######################################
         # 4. Top 10 Productos Más Vendidos
         #######################################
-        # Concatenar Marca, Modelo y tamano para identificar cada producto
         df['Producto'] = df['Marca'] + " " + df['Modelo'] + " " + df['tamano']
         top10 = df.groupby('Producto')['Cantidad'].sum().nlargest(10)
         plt.figure(figsize=(10, 6))
@@ -475,11 +460,9 @@ def generar_graficos_semanales(df, fecha_inicio, fecha_fin):
 
 
 
+
+
 def generar_analisis_semanal(df, df_semana_anterior=None):
-    """
-    Genera un análisis semanal con métricas globales y comparativas, si se
-    dispone de datos de la semana anterior.
-    """
     try:
         ventas_por_dia = df.groupby(df['Timestamp'].dt.date)['Precio'].sum()
         analisis = {
@@ -492,7 +475,7 @@ def generar_analisis_semanal(df, df_semana_anterior=None):
             'ventas_sede_lider': df.groupby('Sede')['Precio'].sum().max(),
             'top_producto': df.groupby('SKU')['Cantidad'].sum().idxmax(),
             'unidades_top_producto': df.groupby('SKU')['Cantidad'].sum().max(),
-            'crecimiento_semanal': 0  # Implementar comparación con semana anterior si se requiere
+            'crecimiento_semanal': 0  # Aquí podrías implementar la comparación con la semana anterior
         }
         logger.info("Análisis semanal generado correctamente.")
         return analisis
@@ -500,11 +483,8 @@ def generar_analisis_semanal(df, df_semana_anterior=None):
         logger.error(f"Error al generar análisis semanal: {str(e)}")
         raise
 
+
 def crear_cuerpo_email_semanal(analisis, fecha_inicio, fecha_fin):
-    """
-    Crea el cuerpo HTML del correo semanal con métricas principales, gráficos y hallazgos.
-    Se actualiza para hacer referencia a los nuevos gráficos generados.
-    """
     cuerpo = f"""
     <!DOCTYPE html>
     <html lang="es">
@@ -574,24 +554,18 @@ def crear_cuerpo_email_semanal(analisis, fecha_inicio, fecha_fin):
 
 
 
+
 def enviar_email_semanal(analisis, df, fecha_inicio, fecha_fin):
-    """
-    Envía el correo semanal adjuntando los gráficos actualizados y un CSV con el detalle de ventas.
-    """
     try:
         msg = MIMEMultipart()
         msg['Subject'] = f"📈 Reporte Semanal de Ventas - {fecha_inicio} a {fecha_fin}"
         msg['From'] = SENDER_EMAIL
         msg['To'] = ", ".join(RECEIVER_EMAILS)
         
-        # Generar los gráficos semanales actualizados
         generar_graficos_semanales(df, fecha_inicio, fecha_fin)
-        
-        # Cuerpo HTML del correo
         body = crear_cuerpo_email_semanal(analisis, fecha_inicio, fecha_fin)
         msg.attach(MIMEText(body, 'html'))
         
-        # Adjuntar las imágenes de los gráficos generados
         imagenes = ['ventas_dia_sede.png', 'ventas_sedes.png', 'evolucion_diaria.png', 'top10_productos.png']
         for imagen in imagenes:
             with open(imagen, 'rb') as img:
@@ -599,21 +573,18 @@ def enviar_email_semanal(analisis, df, fecha_inicio, fecha_fin):
                 image.add_header('Content-ID', f'<{imagen}>')
                 msg.attach(image)
         
-        # Adjuntar CSV con el detalle de ventas semanales
         csv_file = df.to_csv(index=False)
         adjunto = MIMEApplication(csv_file)
         adjunto.add_header('Content-Disposition', 'attachment', 
                            filename=f"detalle_ventas_{fecha_inicio.replace('/', '-')}_a_{fecha_fin.replace('/', '-')}.csv")
         msg.attach(adjunto)
         
-        # Enviar email
         with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
             server.starttls()
             server.login(SENDER_EMAIL, SENDER_PASSWORD)
             server.sendmail(SENDER_EMAIL, RECEIVER_EMAILS, msg.as_string())
             logger.info("Email semanal enviado exitosamente.")
         
-        # Limpieza de imágenes temporales
         for imagen in imagenes:
             if os.path.exists(imagen):
                 os.remove(imagen)
@@ -623,17 +594,23 @@ def enviar_email_semanal(analisis, df, fecha_inicio, fecha_fin):
 
 
 
+
 def obtener_datos_semanales():
     """
-    Extrae los datos de ventas de los últimos 7 días (excluyendo el día actual) de la base de datos.
+    Extrae los datos de ventas de la última semana completa (último lunes a domingo)
+    desde la base de datos.
     """
     try:
+        last_monday, last_sunday = get_last_week_range()
+        fecha_inicio_query = last_monday.strftime('%Y-%m-%d')
+        fecha_fin_query = last_sunday.strftime('%Y-%m-%d')
+        
         conn = mysql.connector.connect(**DB_CONFIG)
         query = """
             SELECT * FROM ventas_totales_2024 
-            WHERE DATE(`Timestamp`) BETWEEN CURDATE() - INTERVAL 7 DAY AND CURDATE() - INTERVAL 1 DAY
+            WHERE DATE(`Timestamp`) BETWEEN %s AND %s
         """
-        df = pd.read_sql(query, conn, parse_dates=['Timestamp'])
+        df = pd.read_sql(query, conn, parse_dates=['Timestamp'], params=(fecha_inicio_query, fecha_fin_query))
         conn.close()
         logger.info("Datos semanales obtenidos correctamente.")
         return df
@@ -644,7 +621,7 @@ def obtener_datos_semanales():
 @app.route('/reporte_semanal', methods=['POST'])
 def generate_weekly_report():
     """
-    Endpoint para generar y enviar el reporte semanal de ventas.
+    Endpoint para generar y enviar el reporte semanal de ventas usando datos del último lunes a domingo.
     """
     try:
         auth_token = request.headers.get('Authorization')
@@ -653,15 +630,17 @@ def generate_weekly_report():
 
         df_ventas = obtener_datos_semanales()
         if not df_ventas.empty:
-            fecha_fin = (datetime.now() - timedelta(days=1)).strftime('%d/%m/%Y')
-            fecha_inicio = (datetime.now() - timedelta(days=7)).strftime('%d/%m/%Y')
+            last_monday, last_sunday = get_last_week_range()
+            # Formato para mostrar en el correo (por ejemplo, '27/01/2025')
+            fecha_inicio_email = last_monday.strftime('%d/%m/%Y')
+            fecha_fin_email = last_sunday.strftime('%d/%m/%Y')
             
             analisis = generar_analisis_semanal(df_ventas)
-            enviar_email_semanal(analisis, df_ventas, fecha_inicio, fecha_fin)
+            enviar_email_semanal(analisis, df_ventas, fecha_inicio_email, fecha_fin_email)
             
             return jsonify({
                 "message": "Reporte semanal generado y enviado exitosamente.",
-                "periodo": f"{fecha_inicio} - {fecha_fin}"
+                "periodo": f"{fecha_inicio_email} - {fecha_fin_email}"
             }), 200
         else:
             return jsonify({"message": "No hay datos para el período solicitado."}), 200
@@ -672,6 +651,25 @@ def generate_weekly_report():
 ######################################
 # ENDPOINTS ADICIONALES Y HOME
 ######################################
+
+
+def get_last_week_range():
+    """
+    Calcula el rango completo de la última semana (último lunes hasta el domingo anterior).
+    
+    Retorna:
+      - last_monday (datetime): Fecha del último lunes.
+      - last_sunday (datetime): Fecha del domingo anterior al lunes de la semana en curso.
+    """
+    today = datetime.now()
+    # Calcula el lunes de la semana actual (0 = lunes, 6 = domingo)
+    monday_this_week = today - timedelta(days=today.weekday())
+    # Último lunes es la semana anterior
+    last_monday = monday_this_week - timedelta(days=7)
+    # El domingo de esa semana es el día anterior al lunes de la semana actual
+    last_sunday = monday_this_week - timedelta(days=1)
+    return last_monday, last_sunday
+
 
 @app.route('/', methods=['GET'])
 def home():
