@@ -1,17 +1,22 @@
 import os
 import smtplib
-import mysql.connector
-import plotly.express as px
-import plotly.graph_objects as go
-import plotly.io as pio
-import pandas as pd
 import logging
 from datetime import datetime, timedelta
+
+import pandas as pd
+import plotly.express as px
+import plotly.io as pio
 from flask import Flask, jsonify, request
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 from email.mime.application import MIMEApplication
+
+# IMPORTANTE: Asegúrate de instalar kaleido para exportar imágenes de Plotly:
+# pip install -U kaleido
+
+# Para evitar warning en pd.read_sql, usamos SQLAlchemy
+from sqlalchemy import create_engine
 
 # Configuración de Plotly
 pio.templates.default = "plotly_white"
@@ -31,6 +36,11 @@ DB_CONFIG = {
     'database': os.environ.get('MYSQL_DATABASE'),
     'port': int(os.environ.get('MYSQL_PORT', 3306))
 }
+
+# Construir la cadena de conexión para SQLAlchemy
+DB_URI = f"mysql+mysqlconnector://{DB_CONFIG['user']}:{DB_CONFIG['password']}@" \
+         f"{DB_CONFIG['host']}:{DB_CONFIG['port']}/{DB_CONFIG['database']}"
+engine = create_engine(DB_URI)
 
 # Configuración de Correo Electrónico
 SMTP_SERVER = "smtp.gmail.com"
@@ -57,7 +67,7 @@ def generar_graficos(df, fecha_reporte):
       2. Distribución de Métodos de Pago.
       3. Top 5 Productos Más Vendidos.
       4. Ventas por Sede.
-    Se exportan las figuras en formato PNG.
+    Se exportan las figuras en formato PNG usando Kaleido.
     """
     try:
         # 1. Evolución horaria de ventas
@@ -278,7 +288,7 @@ def enviar_email(analisis, df, fecha_reporte):
         body = crear_cuerpo_email(analisis, fecha_reporte)
         msg.attach(MIMEText(body, 'html'))
 
-        # Adjuntar imágenes
+        # Adjuntar imágenes generadas
         imagenes = ['ventas_horarias.png', 'metodos_pago.png', 'top_productos.png', 'ventas_sedes.png']
         for imagen in imagenes:
             with open(imagen, 'rb') as img:
@@ -286,14 +296,11 @@ def enviar_email(analisis, df, fecha_reporte):
                 image.add_header('Content-ID', f'<{imagen}>')
                 msg.attach(image)
 
-        # Adjuntar CSV con detalle de ventas
+        # Adjuntar CSV con el detalle de ventas
         csv_file = df.to_csv(index=False)
         adjunto = MIMEApplication(csv_file)
-        adjunto.add_header(
-            'Content-Disposition',
-            'attachment',
-            filename=f"detalle_ventas_{fecha_reporte.replace('/', '-')}.csv"
-        )
+        adjunto.add_header('Content-Disposition', 'attachment',
+                           filename=f"detalle_ventas_{fecha_reporte.replace('/', '-')}.csv")
         msg.attach(adjunto)
 
         # Enviar email
@@ -303,7 +310,7 @@ def enviar_email(analisis, df, fecha_reporte):
             server.sendmail(SENDER_EMAIL, RECEIVER_EMAILS, msg.as_string())
             logger.info("Email diario enviado exitosamente.")
 
-        # Limpieza de archivos gráficos temporales
+        # Eliminar archivos gráficos temporales
         for imagen in imagenes:
             if os.path.exists(imagen):
                 os.remove(imagen)
@@ -314,16 +321,14 @@ def enviar_email(analisis, df, fecha_reporte):
 
 def obtener_datos_ventas():
     """
-    Extrae los datos de ventas del día anterior desde la base de datos.
+    Extrae los datos de ventas del día anterior desde la base de datos usando SQLAlchemy.
     """
     try:
-        conn = mysql.connector.connect(**DB_CONFIG)
         query = """
             SELECT * FROM ventas_totales_2024 
             WHERE DATE(`Timestamp`) = CURDATE() - INTERVAL 1 DAY
         """
-        df = pd.read_sql(query, conn, parse_dates=['Timestamp'])
-        conn.close()
+        df = pd.read_sql(query, engine, parse_dates=['Timestamp'])
         logger.info("Datos diarios obtenidos correctamente.")
         return df
     except Exception as e:
@@ -565,16 +570,16 @@ def enviar_email_semanal(analisis, df, fecha_inicio, fecha_fin):
         msg['To'] = ", ".join(RECEIVER_EMAILS)
 
         generar_graficos_semanales(df, fecha_inicio, fecha_fin)
-        # Generar el gráfico de evolución semanal (se utiliza también para calcular el crecimiento)
+        # Generar el gráfico de evolución semanal (se utiliza para calcular el crecimiento)
         growth = generar_grafico_evolucion_semanal(df)
 
         body = crear_cuerpo_email_semanal(analisis, fecha_inicio, fecha_fin)
         msg.attach(MIMEText(body, 'html'))
 
         imagenes = [
-            'ventas_dia_sede.png', 
-            'ventas_sedes.png', 
-            'evolucion_diaria.png', 
+            'ventas_dia_sede.png',
+            'ventas_sedes.png',
+            'evolucion_diaria.png',
             'evolucion_semanal.png',
             'top10_productos.png'
         ]
@@ -586,11 +591,8 @@ def enviar_email_semanal(analisis, df, fecha_inicio, fecha_fin):
 
         csv_file = df.to_csv(index=False)
         adjunto = MIMEApplication(csv_file)
-        adjunto.add_header(
-            'Content-Disposition',
-            'attachment',
-            filename=f"detalle_ventas_{fecha_inicio.replace('/', '-')}_a_{fecha_fin.replace('/', '-')}.csv"
-        )
+        adjunto.add_header('Content-Disposition', 'attachment',
+                           filename=f"detalle_ventas_{fecha_inicio.replace('/', '-')}_a_{fecha_fin.replace('/', '-')}.csv")
         msg.attach(adjunto)
 
         with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
@@ -609,7 +611,7 @@ def enviar_email_semanal(analisis, df, fecha_inicio, fecha_fin):
 def obtener_datos_semanales():
     """
     Extrae los datos de ventas que abarcan desde el lunes de la semana anterior
-    hasta el domingo de la última semana completa.
+    hasta el domingo de la última semana completa usando SQLAlchemy.
     """
     try:
         last_monday, last_sunday = get_last_week_range()
@@ -617,13 +619,11 @@ def obtener_datos_semanales():
         fecha_inicio_query = prev_monday.strftime('%Y-%m-%d')
         fecha_fin_query = last_sunday.strftime('%Y-%m-%d')
 
-        conn = mysql.connector.connect(**DB_CONFIG)
         query = """
             SELECT * FROM ventas_totales_2024 
             WHERE DATE(`Timestamp`) BETWEEN %s AND %s
         """
-        df = pd.read_sql(query, conn, parse_dates=['Timestamp'], params=(fecha_inicio_query, fecha_fin_query))
-        conn.close()
+        df = pd.read_sql(query, engine, parse_dates=['Timestamp'], params=(fecha_inicio_query, fecha_fin_query))
         logger.info("Datos semanales obtenidos correctamente.")
         return df
     except Exception as e:
